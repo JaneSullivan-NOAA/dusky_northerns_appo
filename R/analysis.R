@@ -32,46 +32,46 @@ yr = 2022
 
 # query data ----
 # connect to database
-akfin = DBI::dbConnect(odbc::odbc(), "akfin",
-                       UID = akfin_user, PWD = akfin_pwd)
-
-# run query (note filter survey data pre-1990)
-sql_run(akfin, 
-        "select    year, species_code, regulatory_area_name, 
-        area_biomass, biomass_var
-        from      afsc.race_biomassareaaigoa
-        where     species_code in (30150, 30152, 30420) and
-        survey = 'GOA'") %>% 
-  rename_all(tolower) %>% 
-  dplyr::select(year, code = species_code, strata = regulatory_area_name, biomass = area_biomass, var = biomass_var) -> dat
-
-DBI::dbDisconnect(akfin)
-
-# dusky rockfish 
-# remove the limited dusky unid in 1990
-dat %>% 
-  filter(code != 30420) %>% 
-  group_by(strata, year) %>% 
-  summarise(biomass = sum(biomass),
-            var = sum(var)) %>% 
-  ungroup() %>% 
-  mutate(cv = ifelse(var==0, NA, sqrt(var) / biomass)) %>% 
-  dplyr::select(strata, year, biomass, cv) -> dusky
-
-vroom_write(dusky, here::here(yr, "data", "dusky.csv"), delim = ",")
-
-# northern rockfish 
-dat %>% 
-  filter(code == 30420) %>% 
-  mutate(cv = ifelse(var==0, NA, sqrt(var) / biomass)) %>% 
-  dplyr::select(strata, year, biomass, cv) -> northern
-
-vroom_write(northern, here::here(yr, "data", "northern.csv"), delim = ",")
+# akfin = DBI::dbConnect(odbc::odbc(), "akfin",
+#                        UID = akfin_user, PWD = akfin_pwd)
+# 
+# # run query (note filter survey data pre-1990)
+# sql_run(akfin, 
+#         "select    year, species_code, regulatory_area_name, 
+#         area_biomass, biomass_var
+#         from      afsc.race_biomassareaaigoa
+#         where     species_code in (30150, 30152, 30420) and
+#         survey = 'GOA'") %>% 
+#   rename_all(tolower) %>% 
+#   dplyr::select(year, code = species_code, strata = regulatory_area_name, biomass = area_biomass, var = biomass_var) -> dat
+# 
+# DBI::dbDisconnect(akfin)
+# 
+# # dusky rockfish 
+# # remove the limited dusky unid in 1990
+# dat %>% 
+#   filter(code != 30420) %>% 
+#   group_by(strata, year) %>% 
+#   summarise(biomass = sum(biomass),
+#             var = sum(var)) %>% 
+#   ungroup() %>% 
+#   mutate(cv = ifelse(var==0, NA, sqrt(var) / biomass)) %>% 
+#   dplyr::select(strata, year, biomass, cv) -> dusky
+# 
+# vroom_write(dusky, here::here(yr, "data", "dusky.csv"), delim = ",")
+# 
+# # northern rockfish 
+# dat %>% 
+#   filter(code == 30420) %>% 
+#   mutate(cv = ifelse(var==0, NA, sqrt(var) / biomass)) %>% 
+#   dplyr::select(strata, year, biomass, cv) -> northern
+# 
+# vroom_write(northern, here::here(yr, "data", "northern.csv"), delim = ",")
 
 # data ----
 
-vroom(here::here(yr, "data", "dusky.csv"))
-vroom(here::here(yr, "data", "northern.csv"))
+dusky <- vroom(here::here(yr, "data", "dusky.csv"))
+northern <- vroom(here::here(yr, "data", "northern.csv"))
 
 # model ----
 # dusky
@@ -88,7 +88,7 @@ out$proportion_biomass_by_strata %>%
   vroom_write(here::here(yr, "results", "dusky_ratios.csv"), delim=",")
     
     
-png(filename=here::here("figs", "dusky.png"), width = 6.5, height = 6.5, 
+png(filename=here::here("figs", "dusky_re.png"), width = 6.5, height = 6.5, 
     units = "in", type ="cairo", res = 200)
 
 out$biomass_by_strata %>% 
@@ -122,6 +122,8 @@ m <- fit_rema(input)
 out <- tidy_rema(m)
 
 
+png(filename=here::here("figs", "northern_re.png"), width = 6.5, height = 6.5, 
+    units = "in", type ="cairo", res = 200)
 out$biomass_by_strata %>% 
   filter(year>=1990) %>% 
   mutate(strata = case_when(strata=="EASTERN GOA" ~ "Eastern",
@@ -138,5 +140,5 @@ out$biomass_by_strata %>%
   xlab("Year") + 
   scale_y_continuous(labels = scales::comma)  +
   scale_x_continuous(breaks = seq(1990,2020,5))
-
+dev.off()
 
