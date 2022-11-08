@@ -121,6 +121,9 @@ input <- prepare_rema_input(model_name = 'northern',
 m <- fit_rema(input)
 out <- tidy_rema(m)
 
+out$proportion_biomass_by_strata %>% 
+  vroom_write(here::here(yr, "results", "northern_ratios.csv"), delim=",")
+
 
 png(filename=here::here("figs", "northern_re.png"), width = 6.5, height = 6.5, 
     units = "in", type ="cairo", res = 200)
